@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hologram Studio</title>
+<style>
+  :root{
+    --bg:#07090d; --panel:#10141b; --panel2:#161b24; --line:#232a36;
+    --text:#e6edf6; --muted:#8a96a8; --accent:#3ee6ff; --accent2:#a46bff;
+    --danger:#ff5d73; --ok:#4be08f; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  button,input,select{font:inherit;color:inherit}
+  header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:rgba(7,9,13,.92);backdrop-filter:blur(8px);z-index:5}
+  header h1{font-size:17px;margin:0;letter-spacing:.3px}
+  header h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  header .sp{flex:1}
+  header .short{display:none}
+  @media (max-width:520px){
+    header{gap:8px;padding:10px 12px}
+    header h1{font-size:15px;white-space:nowrap}
+    header .btn{padding:6px 9px;font-size:13px}
+    header .long{display:none}
+    header .short{display:inline}
+  }
+  .layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+  @media (max-width:900px){.layout{grid-template-columns:1fr;padding:12px 16px}}
+  .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .panel h2 .sp{flex:1}
+  .stick{position:sticky;top:64px}
+  @media (max-width:900px){.stick{position:static}}
+
+  /* stage */
+  .stage{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);aspect-ratio:16/9;width:100%}
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .stage .fsbar{display:none}
+  .stage.fs,.stage:fullscreen{border:0;border-radius:0;aspect-ratio:auto;width:100vw;height:100vh;max-width:none}
+  .stage.fs{position:fixed;inset:0;z-index:100}
+  .stage.fs .fsbar,.stage:fullscreen .fsbar{display:flex;position:absolute;top:10px;right:10px;gap:8px;opacity:.35}
+  .stage.fs .fsbar:hover,.stage:fullscreen .fsbar:hover{opacity:1}
+
+  .transport{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .transport input[type=range]{flex:1}
+  .time{font-variant-numeric:tabular-nums;color:var(--muted);min-width:96px;text-align:right;font-size:13px}
+
+  /* controls */
+  .btn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:#36404f}
+  .btn.primary{background:linear-gradient(90deg,#1ec8e6,#8d5cff);border:0;color:#04121a;font-weight:600}
+  .btn.danger{color:var(--danger)}
+  .btn.icon{padding:6px 9px;min-width:34px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+  @media (max-width:460px){.grid2{grid-template-columns:1fr}}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  label.f .v{color:var(--text);font-variant-numeric:tabular-nums}
+  label.chk{display:flex;align-items:center;gap:8px;font-size:13px}
+  select,input[type=number],input[type=text]{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%}
+  input[type=range]{accent-color:var(--accent);width:100%}
+  .hint{color:var(--muted);font-size:12px;margin:8px 0 0}
+  .sep{height:1px;background:var(--line);margin:12px 0}
+
+  /* slides */
+  .drop{border:1.5px dashed #2c3646;border-radius:10px;padding:14px;text-align:center;color:var(--muted);cursor:pointer}
+  .drop.over{border-color:var(--accent);color:var(--text);background:rgba(62,230,255,.05)}
+  .slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:12px}
+  .card{background:var(--panel2);border:1.5px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;position:relative;user-select:none}
+  .card.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(62,230,255,.2)}
+  .card.dragging{opacity:.4}
+  .card.dropbefore{box-shadow:-4px 0 0 var(--accent2)}
+  .card .th{aspect-ratio:1;background:#000 center/contain no-repeat}
+  .card .meta{display:flex;justify-content:space-between;font-size:11px;padding:4px 6px;color:var(--muted)}
+  .card .num{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border-radius:6px;padding:0 6px;font-size:11px}
+  .card .ops{display:flex;border-top:1px solid var(--line)}
+  .card .ops button{flex:1;background:none;border:0;padding:4px 0;cursor:pointer;color:var(--muted)}
+  .card .ops button:hover{color:var(--text);background:#1c2330}
+  .empty{color:var(--muted);text-align:center;padding:8px 0 2px;font-size:13px}
+
+  /* music */
+  .wave{position:relative;height:84px;background:#05070a;border:1px solid var(--line);border-radius:8px;margin:10px 0;touch-action:none;cursor:ew-resize}
+  .wave canvas{width:100%;height:100%;display:block}
+
+  .progress{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:10px}
+  .progress div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  video.result{width:100%;border-radius:10px;background:#000;margin-top:10px;max-height:340px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1b2230;border:1px solid #2d3748;padding:10px 16px;border-radius:10px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1}
+  .hidden{display:none!important}
+  kbd{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>Hologram</span> Studio</h1>
+  <div class="sp"></div>
+  <button class="btn" id="btnFull" title="Play full screen on this device under the pyramid">⛶ <span class="long">Hologram mode</span><span class="short">Play</span></button>
+  <button class="btn primary" id="btnGoExport">Export<span class="long"> video</span></button>
+</header>
+
+<main class="layout">
+  <!-- LEFT: preview + layout -->
+  <div class="col">
+    <div class="stick col">
+      <div class="panel">
+        <div class="stage" id="stage">
+          <canvas id="view"></canvas>
+          <div class="fsbar"><button class="btn" id="fsPlay">▶</button><button class="btn" id="fsExit">✕ Exit</button></div>
+        </div>
+        <div class="transport">
+          <button class="btn icon" id="btnPlay" title="Play / pause (Space)">▶</button>
+          <button class="btn icon" id="btnStop" title="Back to start">⏮</button>
+          <input type="range" id="scrub" min="0" max="1" step="0.01" value="0">
+          <span class="time" id="time">0:00.0 / 0:00.0</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="chk"><input type="checkbox" id="optGuide" checked> Show pyramid guide (preview only)</label>
+          <label class="chk"><input type="checkbox" id="optLoop"> Loop preview</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Hologram layout</h2>
+        <div class="grid2">
+          <label class="f">Video shape
+            <select id="lAspect">
+              <option value="16:9">Landscape 16:9 (phone sideways)</option>
+              <option value="9:16">Portrait 9:16</option>
+              <option value="1:1">Square 1:1 (tablet / monitor)</option>
+            </select>
+          </label>
+          <label class="f">Image direction
+            <select id="lOrient">
+              <option value="out">Tops point outward (small end down)</option>
+              <option value="in">Tops point inward (big end down)</option>
+            </select>
+          </label>
+          <label class="f">Image size <span class="v" id="lCopyV"></span>
+            <input type="range" id="lCopy" min="0.05" max="0.48" step="0.005" value="0.36">
+          </label>
+          <label class="f">Center gap (pyramid tip) <span class="v" id="lGapV"></span>
+            <input type="range" id="lGap" min="0" max="0.2" step="0.005" value="0.07">
+          </label>
+          <label class="f">Soft edge <span class="v" id="lEdgeV"></span>
+            <input type="range" id="lEdge" min="0" max="0.6" step="0.01" value="0.2">
+          </label>
+          <label class="chk" style="align-self:end"><input type="checkbox" id="lMirror" checked> Mirror-correct (text reads right)</label>
+        </div>
+        <div class="sep"></div>
+        <h2>My pyramid <span class="sp"></span><button class="btn" id="btnTemplate">Download template (SVG)</button></h2>
+        <div class="grid2">
+          <label class="f">Screen short side (cm)
+            <input type="number" id="pScreen" value="6.5" min="2" max="60" step="0.1">
+          </label>
+          <label class="f">Bottom edge – small end (cm)
+            <input type="number" id="pSmall" value="1" min="0" max="40" step="0.1">
+          </label>
+          <label class="f">Top edge – wide end (cm)
+            <input type="number" id="pLarge" value="6" min="0.5" max="60" step="0.1">
+          </label>
+          <label class="f">Height – slanted side (cm)
+            <input type="number" id="pHeight" value="4" min="0.5" max="60" step="0.1">
+          </label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btn45" title="Set the height so the faces sit at exactly 45°">Make it 45°</button>
+        </div>
+        <p class="hint" id="pDims"></p>
+        <p class="hint">Type in the size of each plastic trapezoid and the short side of the screen you'll play on. The image size and center gap sliders follow automatically.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: editing -->
+  <div class="col">
+    <div class="panel">
+      <h2>Images <span class="sp"></span>
+        <button class="btn" id="btnSortName" title="Sort by file name">A→Z</button>
+        <button class="btn" id="btnReverse" title="Reverse order">⇅</button>
+        <button class="btn" id="btnShuffle" title="Shuffle">🔀</button>
+        <button class="btn danger" id="btnClear" title="Remove all">Clear</button>
+      </h2>
+      <div class="drop" id="drop">
+        <strong>Tap to add images</strong> or drop them here<br>
+        <span class="hint">Pictures with a black or dark background look best</span>
+        <input type="file" id="fileImgs" accept="image/*" multiple hidden>
+      </div>
+      <div class="slides" id="slides"></div>
+      <p class="hint">Drag cards to reorder (or use ◀ ▶). Tap a card to edit it.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Auto transitions (apply to all)</h2>
+      <div class="grid2">
+        <label class="f">Each image shows for (s)
+          <input type="number" id="aDur" value="3" min="0.3" max="60" step="0.1">
+        </label>
+        <label class="f">Transition
+          <select id="aTrans" class="transSel"></select>
+        </label>
+        <label class="f">Transition time (s)
+          <input type="number" id="aTransDur" value="1" min="0" max="10" step="0.1">
+        </label>
+        <label class="f">Speed curve
+          <select id="aEase" class="easeSel"></select>
+        </label>
+        <label class="f">Motion
+          <select id="aMotion" class="motionSel"></select>
+        </label>
+        <label class="f">Fit
+          <select id="aFit"><option value="contain">Whole image (contain)</option><option value="cover">Fill square (cover)</option></select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btnApplyAll">Apply to all images</button>
+        <button class="btn" id="btnFitMusic" disabled>Fit images to music length</button>
+        <label class="chk"><input type="checkbox" id="optEndFade" checked> Fade out at end</label>
+      </div>
+    </div>
+
+    <div class="panel" id="slidePanel">
+      <h2>Selected image <span class="sp"></span><span id="selName" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div id="slideEmpty" class="empty">Select an image card to edit it.</div>
+      <div id="slideEdit" class="hidden">
+        <div class="grid2">
+          <label class="f">Shows for (s)
+            <input type="number" id="sDur" min="0.3" max="60" step="0.1">
+          </label>
+          <label class="f">Transition in
+            <select id="sTrans" class="transSel"></select>
+          </label>
+          <label class="f">Transition time (s)
+            <input type="number" id="sTransDur" min="0" max="10" step="0.1">
+          </label>
+          <label class="f">Speed curve
+            <select id="sEase" class="easeSel"></select>
+          </label>
+          <label class="f">Motion
+            <select id="sMotion" class="motionSel"></select>
+          </label>
+          <label class="f">Fit
+            <select id="sFit"><option value="contain">Whole image (contain)</option><option value="cover">Fill square (cover)</option></select>
+          </label>
+          <label class="f">Zoom <span class="v" id="sScaleV"></span>
+            <input type="range" id="sScale" min="0.4" max="2" step="0.01">
+          </label>
+          <label class="f">Brightness <span class="v" id="sBrightV"></span>
+            <input type="range" id="sBright" min="0.5" max="2" step="0.05">
+          </label>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="btnJump">Preview from here</button>
+          <button class="btn" id="btnDup">Duplicate</button>
+          <button class="btn danger" id="btnDel">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Music <span class="sp"></span><button class="btn danger hidden" id="btnMusicDel">Remove</button></h2>
+      <div class="drop" id="dropMusic">
+        <strong id="musicLabel">Tap to add music</strong><br>
+        <span class="hint">MP3, M4A, WAV, OGG…</span>
+        <input type="file" id="fileMusic" accept="audio/*" hidden>
+      </div>
+      <div id="musicEdit" class="hidden">
+        <div class="wave" id="wave"><canvas id="waveCv"></canvas></div>
+        <p class="hint" style="margin-top:-4px">Drag on the waveform to move the nearest trim handle.</p>
+        <div class="grid2" style="margin-top:8px">
+          <label class="f">Start at (s)
+            <input type="number" id="mStart" min="0" step="0.1">
+          </label>
+          <label class="f">End at (s)
+            <input type="number" id="mEnd" min="0" step="0.1">
+          </label>
+          <label class="f">Volume <span class="v" id="mVolV"></span>
+            <input type="range" id="mVol" min="0" max="1.5" step="0.01" value="1">
+          </label>
+          <label class="f">Delay before music (s)
+            <input type="number" id="mDelay" min="0" max="60" step="0.1" value="0">
+          </label>
+          <label class="f">Fade in <span class="v" id="mFadeInV"></span>
+            <input type="range" id="mFadeIn" min="0" max="10" step="0.1" value="1">
+          </label>
+          <label class="f">Fade out <span class="v" id="mFadeOutV"></span>
+            <input type="range" id="mFadeOut" min="0" max="10" step="0.1" value="2">
+          </label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <label class="chk"><input type="checkbox" id="mLoop" checked> Loop music if video is longer</label>
+        </div>
+        <p class="hint" id="musicInfo"></p>
+      </div>
+    </div>
+
+    <div class="panel" id="exportPanel">
+      <h2>Export</h2>
+      <div class="grid2">
+        <label class="f">Resolution
+          <select id="eRes"><option value="720">720p</option><option value="1080" selected>1080p</option></select>
+        </label>
+        <label class="f">Frame rate
+          <select id="eFps"><option value="30" selected>30 fps</option><option value="60">60 fps</option></select>
+        </label>
+        <label class="f">Quality
+          <select id="eRate"><option value="4000000">Standard</option><option value="8000000" selected>High</option><option value="16000000">Very high</option></select>
+        </label>
+        <label class="f">Format
+          <select id="eFmt"></select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btnExport">Record video</button>
+        <button class="btn danger hidden" id="btnCancel">Cancel</button>
+        <span class="hint" id="eStatus" style="margin:0"></span>
+      </div>
+      <div class="progress hidden" id="eProg"><div></div></div>
+      <p class="hint">Recording runs in real time (a 30 s video takes ~30 s). Keep this tab open and visible while it records.</p>
+      <div id="eResult" class="hidden">
+        <video class="result" id="eVideo" controls playsinline></video>
+        <div class="row" style="margin-top:8px"><a class="btn primary" id="eDownload" download>⬇ Download</a><span class="hint" id="eSize" style="margin:0"></span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<canvas id="exportCv" class="hidden"></canvas>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+
+/* ---------- options ---------- */
+const TRANSITIONS = [
+  ['fade','Cross-fade'],['none','Cut (none)'],['slideLeft','Slide left'],['slideRight','Slide right'],
+  ['slideUp','Slide up'],['slideDown','Slide down'],['zoom','Zoom through'],['spin','Spin'],
+  ['flip','Flip'],['wipe','Wipe'],['iris','Iris (circle)'],['random','🎲 Random mix']
+];
+const EASINGS = [['linear','Linear'],['easeInOut','Ease in-out'],['easeIn','Ease in'],['easeOut','Ease out'],['bounce','Bounce']];
+const MOTIONS = [['float','Float (bob)'],['none','Still'],['spin','Turntable spin'],['swing','Swing'],
+  ['zoomIn','Slow zoom in'],['zoomOut','Slow zoom out'],['pulse','Pulse']];
+const EASE = {
+  linear: p => p,
+  easeIn: p => p * p * p,
+  easeOut: p => 1 - Math.pow(1 - p, 3),
+  easeInOut: p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2,
+  bounce: p => { const n = 7.5625, d = 2.75;
+    if (p < 1 / d) return n * p * p;
+    if (p < 2 / d) return n * (p -= 1.5 / d) * p + .75;
+    if (p < 2.5 / d) return n * (p -= 2.25 / d) * p + .9375;
+    return n * (p -= 2.625 / d) * p + .984375; }
+};
+function fillSelect(sel, opts, skip) {
+  sel.innerHTML = opts.filter(o => o[0] !== skip).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+}
+document.querySelectorAll('.transSel').forEach(s => fillSelect(s, TRANSITIONS, s.id === 'sTrans' ? 'random' : null));
+document.querySelectorAll('.easeSel').forEach(s => { fillSelect(s, EASINGS); s.value = 'easeInOut'; });
+document.querySelectorAll('.motionSel').forEach(s => fillSelect(s, MOTIONS));
+
+/* ---------- state ---------- */
+const state = {
+  slides: [], sel: null, timeline: [], total: 0,
+  layout: { aspect: '16:9', orient: 'out', copy: .36, gap: .07, edge: .2, mirror: true },
+  guide: true, loop: false, endFade: true,
+  music: null
+};
+let uid = 1;
+
+function rebuild() {
+  let t = 0;
+  state.timeline = state.slides.map(s => { const o = { s, start: t, end: t + s.duration }; t += s.duration; return o; });
+  state.total = t;
+  scrub.max = Math.max(0.01, state.total);
+  if (curT > state.total) curT = state.total;
+  updateMusicInfo();
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg, ms = 2600) {
+  const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+/* ---------- images ---------- */
+async function loadImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  const max = 1600, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.naturalWidth * k));
+  c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return { src: c, url };
+}
+function defaults() {
+  const tr = $('#aTrans').value;
+  return {
+    duration: +$('#aDur').value || 3,
+    transition: tr === 'random' ? randomTrans() : tr,
+    transDur: +$('#aTransDur').value || 0,
+    easing: $('#aEase').value, motion: $('#aMotion').value, fit: $('#aFit').value,
+    scale: 1, bright: 1
+  };
+}
+function randomTrans() {
+  const pool = TRANSITIONS.map(t => t[0]).filter(t => t !== 'random' && t !== 'none');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+async function addFiles(files) {
+  const imgs = [...files].filter(f => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|avif|heic)$/i.test(f.name));
+  if (!imgs.length) return;
+  let added = 0, failed = 0;
+  for (const f of imgs) {
+    try {
+      const { src, url } = await loadImage(f);
+      state.slides.push({ id: uid++, name: f.name, src, url, ...defaults() });
+      added++;
+    } catch { failed++; }
+  }
+  if (state.sel == null && state.slides.length) state.sel = state.slides[0].id;
+  rebuild(); renderSlides(); renderSlideEditor();
+  toast(`${added} image${added === 1 ? '' : 's'} added` + (failed ? ` · ${failed} couldn't be opened (HEIC? try JPG/PNG)` : ''));
+}
+
+const drop = $('#drop'), fileImgs = $('#fileImgs');
+drop.onclick = () => fileImgs.click();
+fileImgs.onchange = () => { addFiles(fileImgs.files); fileImgs.value = ''; };
+['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { if (hasFiles(e)) { e.preventDefault(); drop.classList.add('over'); } }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('over')));
+drop.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+function hasFiles(e) { return e.dataTransfer && [...e.dataTransfer.types].includes('Files'); }
+// drop files anywhere on the page
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e)) return; e.preventDefault();
+  const files = [...e.dataTransfer.files];
+  const audio = files.find(f => f.type.startsWith('audio/'));
+  if (audio) loadMusic(audio);
+  addFiles(files.filter(f => !f.type.startsWith('audio/')));
+});
+
+/* ---------- slide list ---------- */
+const slidesEl = $('#slides');
+let dragId = null;
+function renderSlides() {
+  if (!state.slides.length) { slidesEl.innerHTML = '<div class="empty" style="grid-column:1/-1">No images yet</div>'; return; }
+  slidesEl.innerHTML = '';
+  state.slides.forEach((s, i) => {
+    const c = document.createElement('div');
+    c.className = 'card' + (s.id === state.sel ? ' sel' : '');
+    c.draggable = true; c.dataset.id = s.id;
+    c.innerHTML = `<div class="th" style="background-image:url('${s.url}')"></div>
+      <span class="num">${i + 1}</span>
+      <div class="meta"><span>${s.duration.toFixed(1)}s</span><span>${(TRANSITIONS.find(t => t[0] === s.transition) || ['', ''])[1]}</span></div>
+      <div class="ops"><button data-op="left" title="Move earlier">◀</button><button data-op="del" title="Remove">✕</button><button data-op="right" title="Move later">▶</button></div>`;
+    c.onclick = e => {
+      const op = e.target.dataset.op;
+      const idx = state.slides.indexOf(s);
+      if (op === 'left' && idx > 0) move(idx, idx - 1);
+      else if (op === 'right' && idx < state.slides.length - 1) move(idx, idx + 1);
+      else if (op === 'del') removeSlide(s.id);
+      else if (!op) { state.sel = s.id; renderSlides(); renderSlideEditor(); seek(slideStart(s.id) + Math.min(s.transDur, s.duration * .9) + .01); }
+    };
+    c.addEventListener('dragstart', e => { dragId = s.id; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', s.id); });
+    c.addEventListener('dragend', () => { dragId = null; c.classList.remove('dragging'); slidesEl.querySelectorAll('.dropbefore').forEach(x => x.classList.remove('dropbefore')); });
+    c.addEventListener('dragover', e => { if (dragId == null) return; e.preventDefault(); slidesEl.querySelectorAll('.dropbefore').forEach(x => x.classList.remove('dropbefore')); c.classList.add('dropbefore'); });
+    c.addEventListener('drop', e => {
+      if (dragId == null) return; e.preventDefault(); e.stopPropagation();
+      const from = state.slides.findIndex(x => x.id === dragId);
+      let to = state.slides.indexOf(s);
+      if (from < to) to--;
+      const r = c.getBoundingClientRect();
+      if (e.clientX > r.left + r.width / 2) to++;
+      move(from, to);
+    });
+    slidesEl.appendChild(c);
+  });
+}
+function move(from, to) {
+  if (from === to || to < 0 || to >= state.slides.length) return;
+  const [s] = state.slides.splice(from, 1);
+  state.slides.splice(to, 0, s);
+  rebuild(); renderSlides();
+}
+function removeSlide(id) {
+  const i = state.slides.findIndex(s => s.id === id);
+  if (i < 0) return;
+  URL.revokeObjectURL(state.slides[i].url);
+  state.slides.splice(i, 1);
+  if (state.sel === id) state.sel = state.slides[Math.min(i, state.slides.length - 1)]?.id ?? null;
+  rebuild(); renderSlides(); renderSlideEditor();
+}
+function slideStart(id) { const t = state.timeline.find(x => x.s.id === id); return t ? t.start : 0; }
+$('#btnSortName').onclick = () => { state.slides.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); rebuild(); renderSlides(); };
+$('#btnReverse').onclick = () => { state.slides.reverse(); rebuild(); renderSlides(); };
+$('#btnShuffle').onclick = () => {
+  const a = state.slides;
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  rebuild(); renderSlides();
+};
+$('#btnClear').onclick = () => {
+  if (!state.slides.length || !confirm('Remove all images?')) return;
+  state.slides.forEach(s => URL.revokeObjectURL(s.url));
+  state.slides = []; state.sel = null; rebuild(); renderSlides(); renderSlideEditor(); seek(0);
+};
+
+/* ---------- auto transitions ---------- */
+$('#btnApplyAll').onclick = () => {
+  if (!state.slides.length) return toast('Add some images first');
+  state.slides.forEach(s => {
+    const d = defaults();
+    Object.assign(s, { duration: d.duration, transition: d.transition, transDur: d.transDur, easing: d.easing, motion: d.motion, fit: d.fit });
+  });
+  rebuild(); renderSlides(); renderSlideEditor();
+  toast('Applied to all images');
+};
+$('#btnFitMusic').onclick = () => {
+  const m = state.music; if (!m || !state.slides.length) return;
+  const target = m.end - m.start + m.delay;
+  const per = target / state.slides.length;
+  state.slides.forEach(s => { s.duration = Math.max(.3, per); s.transDur = Math.min(s.transDur, s.duration * .8); });
+  $('#aDur').value = per.toFixed(2);
+  rebuild(); renderSlides(); renderSlideEditor();
+  toast(`Each image now shows ${per.toFixed(2)} s`);
+};
+$('#optEndFade').onchange = e => state.endFade = e.target.checked;
+
+/* ---------- selected slide editor ---------- */
+const sel = () => state.slides.find(s => s.id === state.sel);
+function renderSlideEditor() {
+  const s = sel();
+  $('#slideEmpty').classList.toggle('hidden', !!s);
+  $('#slideEdit').classList.toggle('hidden', !s);
+  $('#selName').textContent = s ? s.name : '';
+  if (!s) return;
+  $('#sDur').value = s.duration; $('#sTrans').value = s.transition; $('#sTransDur').value = s.transDur;
+  $('#sEase').value = s.easing; $('#sMotion').value = s.motion; $('#sFit').value = s.fit;
+  $('#sScale').value = s.scale; $('#sScaleV').textContent = Math.round(s.scale * 100) + '%';
+  $('#sBright').value = s.bright; $('#sBrightV').textContent = Math.round(s.bright * 100) + '%';
+}
+function bindSlide(id, key, num, after) {
+  $(id).addEventListener('input', e => {
+    const s = sel(); if (!s) return;
+    let v = num ? parseFloat(e.target.value) : e.target.value;
+    if (num && !isFinite(v)) return;
+    if (key === 'duration') v = Math.max(.3, v);
+    if (key === 'transDur') v = Math.max(0, v);
+    s[key] = v; after && after(s); rebuild(); renderSlides();
+  });
+}
+bindSlide('#sDur', 'duration', true);
+bindSlide('#sTrans', 'transition');
+bindSlide('#sTransDur', 'transDur', true);
+bindSlide('#sEase', 'easing');
+bindSlide('#sMotion', 'motion');
+bindSlide('#sFit', 'fit');
+bindSlide('#sScale', 'scale', true, s => $('#sScaleV').textContent = Math.round(s.scale * 100) + '%');
+bindSlide('#sBright', 'bright', true, s => $('#sBrightV').textContent = Math.round(s.bright * 100) + '%');
+$('#btnJump').onclick = () => { const s = sel(); if (s) { seek(slideStart(s.id)); play(); } };
+$('#btnDel').onclick = () => { const s = sel(); if (s) removeSlide(s.id); };
+$('#btnDup').onclick = () => {
+  const s = sel(); if (!s) return;
+  const i = state.slides.indexOf(s);
+  const copy = { ...s, id: uid++ };
+  // share the bitmap but give the copy its own thumbnail URL lifetime
+  copy.url = s.url; copy._shared = true;
+  state.slides.splice(i + 1, 0, copy); state.sel = copy.id;
+  rebuild(); renderSlides(); renderSlideEditor();
+};
+
+/* ---------- layout controls ---------- */
+const L = state.layout;
+function layoutUI() {
+  $('#lCopyV').textContent = Math.round(L.copy * 100) + '%';
+  $('#lGapV').textContent = Math.round(L.gap * 100) + '%';
+  $('#lEdgeV').textContent = L.edge ? Math.round(L.edge * 100) + '%' : 'off';
+  $('#stage').style.aspectRatio = L.aspect.replace(':', '/');
+  pyramidDims(); sizeView();
+}
+$('#lAspect').onchange = e => { L.aspect = e.target.value; layoutUI(); };
+$('#lOrient').onchange = e => { L.orient = e.target.value; };
+$('#lCopy').oninput = e => { L.copy = +e.target.value; layoutToPyramid(); layoutUI(); };
+$('#lGap').oninput = e => { L.gap = +e.target.value; layoutToPyramid(); layoutUI(); };
+$('#lEdge').oninput = e => { L.edge = +e.target.value; layoutUI(); };
+$('#lMirror').onchange = e => { L.mirror = e.target.checked; };
+$('#optGuide').onchange = e => state.guide = e.target.checked;
+$('#optLoop').onchange = e => state.loop = e.target.checked;
+
+// geometry in units of the hologram square's side (S = 1)
+function geom() {
+  const gap = L.gap, copy = Math.min(L.copy, .5 - gap);
+  return { gap, copy };
+}
+
+/* ---------- my pyramid: physical sizes <-> layout ---------- */
+const PYR = ['pScreen', 'pSmall', 'pLarge', 'pHeight'];
+const num = id => parseFloat($('#' + id).value);
+function pyr() { return { S: num('pScreen'), small: num('pSmall'), large: num('pLarge'), h: num('pHeight') }; }
+function savePyr() { try { localStorage.setItem('holoPyramid', JSON.stringify(pyr())); } catch {} }
+function loadPyr() {
+  try {
+    const p = JSON.parse(localStorage.getItem('holoPyramid'));
+    if (p) for (const [id, k] of [['pScreen', 'S'], ['pSmall', 'small'], ['pLarge', 'large'], ['pHeight', 'h']]) if (isFinite(p[k])) $('#' + id).value = p[k];
+  } catch {}
+}
+// pyramid sizes -> center gap + image size
+function pyramidToLayout() {
+  const { S, small, large } = pyr();
+  if (!(S > 0) || !(large > small) || !(small >= 0)) return;
+  L.gap = clamp(small / 2 / S, 0, .2);
+  L.copy = clamp((large - small) / 2 / S, .02, .5 - L.gap);
+  $('#lGap').value = L.gap; $('#lCopy').value = L.copy;
+}
+// sliders moved by hand -> new pyramid widths, keeping the same face angle
+function layoutToPyramid() {
+  const { S, small, large, h } = pyr();
+  if (!(S > 0)) return;
+  const run = (large - small) / 2, ratio = run > 0 && h > run ? h / run : Math.SQRT2;
+  const g = geom(), nSmall = 2 * g.gap * S, nLarge = 2 * (g.gap + g.copy) * S;
+  $('#pSmall').value = nSmall.toFixed(1);
+  $('#pLarge').value = nLarge.toFixed(1);
+  $('#pHeight').value = ((nLarge - nSmall) / 2 * ratio).toFixed(1);
+  savePyr();
+}
+function pyramidDims() {
+  const { S, small, large, h } = pyr(), out = $('#pDims');
+  const run = (large - small) / 2, lines = [];
+  if (!(S > 0 && large > 0 && h > 0)) { out.innerHTML = 'Fill in all four sizes.'; return null; }
+  if (!(large > small)) { out.innerHTML = '⚠ The top (wide) edge must be longer than the bottom edge.'; return null; }
+  if (!(h > run)) { out.innerHTML = `⚠ The height must be more than ${run.toFixed(1)} cm for these widths (45° needs ${(run * Math.SQRT2).toFixed(1)} cm).`; return null; }
+  const angle = Math.acos(run / h) * 180 / Math.PI, rise = Math.sqrt(h * h - run * run);
+  lines.push(`Faces lean at <b>${angle.toFixed(0)}°</b> · stands <b>${rise.toFixed(1)} cm</b> tall · hologram area <b>${large.toFixed(1)} cm</b> square`);
+  if (Math.abs(angle - 45) < 3) lines.push('✓ Close to 45°: view it straight from the side.');
+  else if (angle > 45) lines.push(`Steeper than 45°: the image looks best with your eyes a little above the pyramid (45° would need ${(run * Math.SQRT2).toFixed(1)} cm).`);
+  else lines.push(`Flatter than 45°: the image looks best with your eyes a little below the pyramid top (45° would need ${(run * Math.SQRT2).toFixed(1)} cm).`);
+  if (large > S + .05) lines.push(`⚠ The wide end (${large.toFixed(1)} cm) is bigger than your screen's short side (${S} cm), so the images get squeezed. Use a smaller pyramid or a bigger screen.`);
+  out.innerHTML = lines.join('<br>');
+  return { small, large, h };
+}
+PYR.forEach(id => $('#' + id).addEventListener('input', () => { pyramidToLayout(); savePyr(); layoutUI(); }));
+$('#btn45').onclick = () => {
+  const { small, large } = pyr();
+  if (!(large > small)) return toast('Set the top and bottom edges first');
+  $('#pHeight').value = ((large - small) / 2 * Math.SQRT2).toFixed(1);
+  savePyr(); layoutUI();
+};
+$('#btnTemplate').onclick = () => {
+  const d = pyramidDims();
+  if (!d) return toast('Fix the pyramid sizes first');
+  const { small, large, h } = d;
+  const mm = v => +(v * 10).toFixed(2);
+  const sw = mm(small), lw = mm(large), hh = mm(h), pad = 8, gapY = 6;
+  const W = lw + pad * 2, H = (hh + gapY) * 4 + pad * 2 + 10;
+  let shapes = '';
+  for (let i = 0; i < 4; i++) {
+    const y = pad + 10 + i * (hh + gapY), x0 = pad, cx = x0 + lw / 2;
+    shapes += `<polygon points="${cx - sw / 2},${y} ${cx + sw / 2},${y} ${x0 + lw},${y + hh} ${x0},${y + hh}" fill="none" stroke="#000" stroke-width="0.3"/>
+      <text x="${cx}" y="${y + hh / 2 + 1.5}" font-size="3.5" text-anchor="middle" font-family="sans-serif">${i + 1}</text>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="${pad}" y="${pad + 3}" font-size="3.2" font-family="sans-serif">Hologram pyramid · small end ${small.toFixed(1)} cm · wide end ${large.toFixed(1)} cm · height ${h.toFixed(1)} cm · print at 100% scale</text>
+${shapes}</svg>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  a.download = 'pyramid-template.svg'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+
+/* ---------- rendering ---------- */
+const view = $('#view'), vctx = view.getContext('2d');
+const content = document.createElement('canvas'), cctx = content.getContext('2d');
+
+function drawSlide(c, size, s, u, tf = {}) {
+  if (!s) return;
+  const { alpha = 1, dx = 0, dy = 0, sc = 1, rot = 0, sx = 1 } = tf;
+  if (alpha <= 0.001 || sc <= 0.001) return;
+  const k = s.duration > 0 ? u / s.duration : 0;
+  let mS = 1, mR = 0, mY = 0;
+  switch (s.motion) {
+    case 'zoomIn': mS = 1 + .2 * k; break;
+    case 'zoomOut': mS = 1.2 - .2 * k; break;
+    case 'spin': mR = k * TAU; break;
+    case 'swing': mR = Math.sin(u * 1.6) * .18; break;
+    case 'float': mY = Math.sin(u * 2.2) * .035; break;
+    case 'pulse': mS = 1 + Math.sin(u * 3.2) * .05; break;
+  }
+  const img = s.src, iw = img.width, ih = img.height;
+  const base = (s.fit === 'cover' ? Math.max(size / iw, size / ih) : Math.min(size / iw, size / ih)) * s.scale;
+  c.save();
+  c.globalAlpha = alpha;
+  if (s.bright !== 1) c.filter = `brightness(${s.bright})`;
+  c.translate(size / 2 + dx * size, size / 2 + (dy + mY) * size);
+  c.rotate(rot + mR);
+  c.scale(sc * mS * sx, sc * mS);
+  c.drawImage(img, -iw * base / 2, -ih * base / 2, iw * base, ih * base);
+  c.restore();
+}
+
+function drawTransition(c, size, type, prev, pu, cur, u, p) {
+  const P = tf => drawSlide(c, size, prev, pu, tf), C = tf => drawSlide(c, size, cur, u, tf);
+  switch (type) {
+    case 'fade': c.globalCompositeOperation = 'lighter'; P({ alpha: 1 - p }); C({ alpha: p }); break;
+    case 'slideLeft': P({ dx: -p }); C({ dx: 1 - p }); break;
+    case 'slideRight': P({ dx: p }); C({ dx: p - 1 }); break;
+    case 'slideUp': P({ dy: -p }); C({ dy: 1 - p }); break;
+    case 'slideDown': P({ dy: p }); C({ dy: p - 1 }); break;
+    case 'zoom': c.globalCompositeOperation = 'lighter'; P({ sc: 1 + 1.5 * p, alpha: 1 - p }); C({ sc: .2 + .8 * p, alpha: p }); break;
+    case 'spin': P({ rot: p * Math.PI, sc: 1 - p }); C({ rot: (p - 1) * Math.PI, sc: p }); break;
+    case 'flip': if (p < .5) P({ sx: 1 - 2 * p }); else C({ sx: 2 * p - 1 }); break;
+    case 'wipe':
+      P(); c.save(); c.beginPath(); c.rect(0, 0, size * p, size); c.clip();
+      c.clearRect(0, 0, size, size); C(); c.restore(); break;
+    case 'iris':
+      P(); c.save(); c.beginPath(); c.arc(size / 2, size / 2, Math.max(0, p) * size * .72, 0, TAU); c.clip();
+      c.clearRect(0, 0, size, size); C(); c.restore(); break;
+    default: C();
+  }
+  c.globalCompositeOperation = 'source-over';
+}
+
+function drawPlaceholder(c, size, t) {
+  const r = size * .3;
+  c.save(); c.translate(size / 2, size / 2); c.rotate(t * .8);
+  const g = c.createLinearGradient(-r, -r, r, r);
+  g.addColorStop(0, '#3ee6ff'); g.addColorStop(1, '#a46bff');
+  c.strokeStyle = g; c.lineWidth = size * .03;
+  c.beginPath();
+  for (let i = 0; i < 5; i++) { const a = i * TAU * 2 / 5 - Math.PI / 2; c[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); }
+  c.closePath(); c.stroke(); c.restore();
+  c.fillStyle = '#cfefff'; c.font = `600 ${Math.round(size * .085)}px system-ui,sans-serif`;
+  c.textAlign = 'center'; c.fillText('Add images', size / 2, size * .93);
+}
+
+function renderContent(c, size, t) {
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.clearRect(0, 0, size, size);
+  const tl = state.timeline;
+  if (!tl.length) drawPlaceholder(c, size, t);
+  else {
+    let i = tl.findIndex(x => t < x.end); if (i < 0) i = tl.length - 1;
+    const cur = tl[i], s = cur.s, u = Math.max(0, t - cur.start);
+    const tr = Math.min(s.transDur, s.duration * .95);
+    if (s.transition !== 'none' && tr > 0 && u < tr) {
+      const p = Math.min(1, Math.max(0, (EASE[s.easing] || EASE.linear)(u / tr)));
+      const prev = i > 0 ? tl[i - 1].s : null;
+      drawTransition(c, size, s.transition, prev, prev ? prev.duration + u : 0, s, u, p);
+    } else drawSlide(c, size, s, u);
+    if (state.endFade && state.total > 0) {
+      const f = Math.min(1, Math.max(0, (state.total - t) / .8));
+      if (f < 1) { c.globalCompositeOperation = 'destination-in'; c.fillStyle = `rgba(0,0,0,${f})`; c.fillRect(0, 0, size, size); }
+    }
+  }
+  if (L.edge > 0) {
+    const g = c.createRadialGradient(size / 2, size / 2, size * .5 * (1 - L.edge), size / 2, size / 2, size * .5);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.globalCompositeOperation = 'destination-in'; c.fillStyle = g; c.fillRect(0, 0, size, size);
+  }
+  c.globalCompositeOperation = 'source-over';
+}
+
+function composeFrame(ctx, W, H, t, guide) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const S = Math.min(W, H), cx = W / 2, cy = H / 2, g = geom();
+  const gap = g.gap * S, copy = g.copy * S;
+  const size = Math.max(16, Math.round(copy));
+  if (content.width !== size) { content.width = content.height = size; }
+  renderContent(cctx, size, t);
+  const dist = gap + copy / 2;
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2;
+    ctx.save();
+    ctx.translate(cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
+    ctx.rotate(a + (L.orient === 'in' ? Math.PI : 0));
+    if (L.mirror) ctx.scale(-1, 1);
+    ctx.drawImage(content, -copy / 2, -copy / 2, copy, copy);
+    ctx.restore();
+  }
+  if (guide) {
+    const inner = gap, outer = gap + copy;
+    ctx.save(); ctx.strokeStyle = 'rgba(62,230,255,.45)'; ctx.lineWidth = Math.max(1, S / 400);
+    ctx.setLineDash([S / 80, S / 120]);
+    ctx.strokeRect(cx - inner, cy - inner, inner * 2, inner * 2);
+    ctx.strokeRect(cx - outer, cy - outer, outer * 2, outer * 2);
+    ctx.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(cx + sx * inner, cy + sy * inner); ctx.lineTo(cx + sx * outer, cy + sy * outer); }
+    ctx.stroke(); ctx.restore();
+  }
+}
+
+/* ---------- view sizing ---------- */
+const stage = $('#stage');
+function sizeView() {
+  const r = stage.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+  if (view.width !== w || view.height !== h) { view.width = w; view.height = h; }
+}
+new ResizeObserver(sizeView).observe(stage);
+
+/* ---------- audio ---------- */
+let actx = null;
+function ensureAudio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+let musicNodes = null;
+function stopMusic() {
+  if (!musicNodes) return;
+  try { musicNodes.src.stop(); } catch {}
+  musicNodes.src.disconnect(); musicNodes.gain.disconnect(); musicNodes = null;
+}
+// play the music as it should sound from video time `at`, into `dest`
+function startMusic(at, dest, when) {
+  stopMusic();
+  const m = state.music; if (!m) return;
+  const ac = ensureAudio(), T = state.total, seg = m.end - m.start;
+  if (seg <= .05 || at >= T) return;
+  const musicAt = at - m.delay;                       // seconds into the trimmed music
+  const musicEnd = m.loop ? T : Math.min(T, m.delay + seg); // video time music stops
+  if (at >= musicEnd) return;
+  const src = ac.createBufferSource(), gain = ac.createGain();
+  src.buffer = m.buffer;
+  if (m.loop) { src.loop = true; src.loopStart = m.start; src.loopEnd = m.end; }
+  src.connect(gain).connect(dest);
+  const t0 = when ?? ac.currentTime;
+  const startVT = Math.max(at, m.delay);              // video time sound begins
+  const offset = m.start + (m.loop ? ((Math.max(0, musicAt) % seg) + seg) % seg : Math.max(0, musicAt));
+  const vol = m.volume, fi = m.fadeIn, fo = Math.min(m.fadeOut, musicEnd - m.delay);
+  const env = vt => {                                  // volume at video time vt
+    let v = vol;
+    if (fi > 0) v *= Math.min(1, Math.max(0, (vt - m.delay) / fi));
+    if (fo > 0) v *= Math.min(1, Math.max(0, (musicEnd - vt) / fo));
+    return v;
+  };
+  const g = gain.gain, at2ctx = vt => t0 + (vt - at);
+  g.setValueAtTime(env(startVT), at2ctx(startVT));
+  const fiEnd = m.delay + fi, foStart = Math.max(musicEnd - fo, startVT);
+  if (fi > 0 && fiEnd > startVT && fiEnd < foStart) g.linearRampToValueAtTime(vol, at2ctx(fiEnd));
+  if (fo > 0) {
+    if (foStart > startVT) g.setValueAtTime(env(foStart), at2ctx(foStart));
+    g.linearRampToValueAtTime(0, at2ctx(musicEnd));
+  }
+  src.start(at2ctx(startVT), offset);
+  src.stop(at2ctx(musicEnd) + .05);
+  musicNodes = { src, gain };
+}
+
+async function loadMusic(file) {
+  try {
+    const ac = ensureAudio();
+    const buf = await ac.decodeAudioData(await file.arrayBuffer());
+    stopMusic();
+    state.music = {
+      name: file.name, buffer: buf, start: 0, end: buf.duration,
+      volume: +$('#mVol').value, fadeIn: +$('#mFadeIn').value, fadeOut: +$('#mFadeOut').value,
+      delay: +$('#mDelay').value || 0, loop: $('#mLoop').checked, peaks: computePeaks(buf, 1200)
+    };
+    $('#musicLabel').textContent = '♪ ' + file.name + ' (tap to replace)';
+    $('#musicEdit').classList.remove('hidden'); $('#btnMusicDel').classList.remove('hidden');
+    $('#btnFitMusic').disabled = false;
+    musicUI(); toast('Music added');
+    if (playing) { pause(); play(); }
+  } catch (e) { toast("Couldn't read that audio file"); console.error(e); }
+}
+function computePeaks(buf, n) {
+  const ch = buf.getChannelData(0), ch2 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
+  const step = Math.max(1, Math.floor(ch.length / n)), out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let mx = 0; const a = i * step, b = Math.min(ch.length, a + step);
+    for (let j = a; j < b; j += 4) { const v = Math.abs(ch[j]) + (ch2 ? Math.abs(ch2[j]) : 0); if (v > mx) mx = v; }
+    out[i] = ch2 ? mx / 2 : mx;
+  }
+  const max = Math.max(...out) || 1;
+  return out.map(v => v / max);
+}
+const dropMusic = $('#dropMusic'), fileMusic = $('#fileMusic');
+dropMusic.onclick = () => fileMusic.click();
+fileMusic.onchange = () => { if (fileMusic.files[0]) loadMusic(fileMusic.files[0]); fileMusic.value = ''; };
+dropMusic.addEventListener('dragover', e => { e.preventDefault(); dropMusic.classList.add('over'); });
+dropMusic.addEventListener('dragleave', () => dropMusic.classList.remove('over'));
+dropMusic.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); dropMusic.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) loadMusic(f); });
+$('#btnMusicDel').onclick = () => {
+  stopMusic(); state.music = null;
+  $('#musicLabel').textContent = 'Tap to add music';
+  $('#musicEdit').classList.add('hidden'); $('#btnMusicDel').classList.add('hidden');
+  $('#btnFitMusic').disabled = true;
+};
+
+function musicUI() {
+  const m = state.music; if (!m) return;
+  $('#mStart').value = m.start.toFixed(1); $('#mEnd').value = m.end.toFixed(1);
+  $('#mStart').max = $('#mEnd').max = m.buffer.duration.toFixed(1);
+  $('#mVolV').textContent = Math.round(m.volume * 100) + '%';
+  $('#mFadeInV').textContent = m.fadeIn.toFixed(1) + ' s';
+  $('#mFadeOutV').textContent = m.fadeOut.toFixed(1) + ' s';
+  updateMusicInfo(); drawWave();
+}
+function updateMusicInfo() {
+  const m = state.music; if (!m) return;
+  const seg = m.end - m.start;
+  $('#musicInfo').textContent = `Music clip: ${fmt(seg)}  ·  Video: ${fmt(state.total)}` +
+    (state.total > seg + m.delay + .05 ? (m.loop ? '  ·  music will loop' : '  ·  music ends before the video') : '');
+}
+const musicChanged = () => { musicUI(); if (playing) startMusic(curT, actx.destination); };
+$('#mStart').oninput = e => { const m = state.music; if (!m) return; m.start = clamp(+e.target.value, 0, m.end - .1); drawWave(); updateMusicInfo(); };
+$('#mEnd').oninput = e => { const m = state.music; if (!m) return; m.end = clamp(+e.target.value, m.start + .1, m.buffer.duration); drawWave(); updateMusicInfo(); };
+$('#mStart').onchange = $('#mEnd').onchange = musicChanged;
+$('#mVol').oninput = e => { if (state.music) { state.music.volume = +e.target.value; musicChanged(); } };
+$('#mFadeIn').oninput = e => { if (state.music) { state.music.fadeIn = +e.target.value; musicChanged(); } };
+$('#mFadeOut').oninput = e => { if (state.music) { state.music.fadeOut = +e.target.value; musicChanged(); } };
+$('#mDelay').oninput = e => { if (state.music) { state.music.delay = Math.max(0, +e.target.value || 0); musicChanged(); } };
+$('#mLoop').onchange = e => { if (state.music) { state.music.loop = e.target.checked; musicChanged(); } };
+
+const waveCv = $('#waveCv'), wctx = waveCv.getContext('2d'), waveEl = $('#wave');
+function drawWave() {
+  const m = state.music; if (!m) return;
+  const dpr = Math.min(devicePixelRatio || 1, 2), r = waveEl.getBoundingClientRect();
+  const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+  if (!W) return;
+  if (waveCv.width !== W || waveCv.height !== H) { waveCv.width = W; waveCv.height = H; }
+  const D = m.buffer.duration, x = t => t / D * W;
+  wctx.clearRect(0, 0, W, H);
+  const n = m.peaks.length;
+  for (let px = 0; px < W; px++) {
+    const v = m.peaks[Math.floor(px / W * n)] || 0, tt = px / W * D;
+    const inside = tt >= m.start && tt <= m.end;
+    wctx.fillStyle = inside ? '#3ee6ff' : '#2a3442';
+    const h = Math.max(1, v * H * .9);
+    wctx.fillRect(px, (H - h) / 2, 1, h);
+  }
+  // fades
+  wctx.fillStyle = 'rgba(164,107,255,.25)';
+  if (m.fadeIn) wctx.fillRect(x(m.start), 0, x(Math.min(m.fadeIn, m.end - m.start)), H);
+  // trim handles
+  wctx.fillStyle = '#fff';
+  for (const t of [m.start, m.end]) { wctx.fillRect(x(t) - dpr, 0, 2 * dpr, H); wctx.fillRect(x(t) - 5 * dpr, 0, 10 * dpr, 6 * dpr); }
+  // playhead
+  if (state.total) {
+    const seg = m.end - m.start, mt = curT - m.delay;
+    if (mt >= 0 && (m.loop || mt <= seg)) {
+      wctx.fillStyle = '#ffd34d';
+      wctx.fillRect(x(m.start + (m.loop ? mt % seg : mt)) - dpr / 2, 0, dpr, H);
+    }
+  }
+}
+let waveDrag = null;
+waveEl.addEventListener('pointerdown', e => {
+  const m = state.music; if (!m) return;
+  const t = waveTime(e);
+  waveDrag = Math.abs(t - m.start) < Math.abs(t - m.end) ? 'start' : 'end';
+  waveEl.setPointerCapture(e.pointerId); waveMove(e);
+});
+waveEl.addEventListener('pointermove', e => { if (waveDrag) waveMove(e); });
+waveEl.addEventListener('pointerup', () => { if (waveDrag) { waveDrag = null; musicChanged(); } });
+function waveTime(e) { const r = waveEl.getBoundingClientRect(); return clamp((e.clientX - r.left) / r.width, 0, 1) * state.music.buffer.duration; }
+function waveMove(e) {
+  const m = state.music, t = waveTime(e);
+  if (waveDrag === 'start') m.start = clamp(t, 0, m.end - .1); else m.end = clamp(t, m.start + .1, m.buffer.duration);
+  $('#mStart').value = m.start.toFixed(1); $('#mEnd').value = m.end.toFixed(1);
+  drawWave(); updateMusicInfo();
+}
+new ResizeObserver(drawWave).observe(waveEl);
+
+/* ---------- transport ---------- */
+const scrub = $('#scrub'), btnPlay = $('#btnPlay');
+let playing = false, curT = 0, clock0 = 0, t00 = 0, exporting = false;
+function play() {
+  if (exporting) return;
+  if (!state.total) return toast('Add some images first');
+  const ac = ensureAudio();
+  if (curT >= state.total - .02) curT = 0;
+  playing = true; clock0 = ac.currentTime; t00 = curT;
+  startMusic(curT, ac.destination);
+  btnPlay.textContent = '⏸'; $('#fsPlay').textContent = '⏸';
+}
+function pause() {
+  playing = false; stopMusic();
+  btnPlay.textContent = '▶'; $('#fsPlay').textContent = '▶';
+}
+function seek(t) {
+  curT = clamp(t, 0, state.total);
+  if (playing) { clock0 = actx.currentTime; t00 = curT; startMusic(curT, actx.destination); }
+}
+btnPlay.onclick = () => playing ? pause() : play();
+$('#fsPlay').onclick = e => { e.stopPropagation(); playing ? pause() : play(); };
+$('#btnStop').onclick = () => { pause(); seek(0); };
+scrub.oninput = () => seek(+scrub.value);
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); playing ? pause() : play(); }
+  if (e.key === 'Escape' && stage.classList.contains('fs')) exitFull();
+});
+
+function fmt(t) { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`; }
+function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+function frame() {
+  if (playing) {
+    curT = t00 + (actx.currentTime - clock0);
+    if (curT >= state.total) {
+      if (state.loop && state.total) { curT = 0; t00 = 0; clock0 = actx.currentTime; startMusic(0, actx.destination); }
+      else { curT = state.total; pause(); }
+    }
+  }
+  if (!exporting) {
+    const fs = isFull();
+    composeFrame(vctx, view.width, view.height, state.total ? curT : performance.now() / 1000, state.guide && !fs);
+    scrub.value = curT;
+    $('#time').textContent = `${fmt(curT)} / ${fmt(state.total)}`;
+    if (state.music && playing) drawWave();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- full-screen hologram mode ---------- */
+function isFull() { return document.fullscreenElement === stage || stage.classList.contains('fs'); }
+async function enterFull() {
+  try {
+    if (stage.requestFullscreen) await stage.requestFullscreen({ navigationUI: 'hide' });
+    else if (stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
+    else throw 0;
+    try { await screen.orientation.lock(L.aspect === '9:16' ? 'portrait' : 'landscape'); } catch {}
+  } catch { stage.classList.add('fs'); document.body.style.overflow = 'hidden'; }
+  sizeView();
+}
+function exitFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  stage.classList.remove('fs'); document.body.style.overflow = '';
+  setTimeout(sizeView, 50);
+}
+$('#btnFull').onclick = () => { enterFull(); if (!playing && state.total) play(); };
+$('#fsExit').onclick = e => { e.stopPropagation(); exitFull(); };
+stage.addEventListener('click', () => { if (isFull()) playing ? pause() : play(); });
+document.addEventListener('fullscreenchange', () => setTimeout(sizeView, 50));
+
+/* ---------- export ---------- */
+const exportCv = $('#exportCv'), ectx = exportCv.getContext('2d');
+const FORMATS = [
+  ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'MP4 (H.264 + AAC)', 'mp4'],
+  ['video/mp4;codecs=avc1,mp4a', 'MP4 (H.264)', 'mp4'],
+  ['video/mp4', 'MP4', 'mp4'],
+  ['video/webm;codecs=vp9,opus', 'WebM (VP9)', 'webm'],
+  ['video/webm;codecs=vp8,opus', 'WebM (VP8)', 'webm'],
+  ['video/webm', 'WebM', 'webm']
+];
+const supported = window.MediaRecorder ? FORMATS.filter(f => MediaRecorder.isTypeSupported(f[0])) : [];
+const fmtSel = $('#eFmt');
+if (supported.length) {
+  const seen = new Set();
+  fmtSel.innerHTML = supported.filter(f => !seen.has(f[1]) && seen.add(f[1])).map(f => `<option value="${f[0]}">${f[1]}</option>`).join('');
+} else {
+  fmtSel.innerHTML = '<option>Not supported in this browser</option>'; $('#btnExport').disabled = true;
+  $('#eStatus').textContent = 'Video recording is not supported here. Try Chrome, Edge, Firefox or Safari 14.1+.';
+}
+
+let recorder = null, cancelled = false;
+$('#btnGoExport').onclick = () => $('#exportPanel').scrollIntoView({ behavior: 'smooth' });
+$('#btnCancel').onclick = () => { cancelled = true; recorder && recorder.state !== 'inactive' && recorder.stop(); };
+$('#btnExport').onclick = async () => {
+  if (!state.total) return toast('Add some images first');
+  pause();
+  const res = +$('#eRes').value, fps = +$('#eFps').value, rate = +$('#eRate').value, mime = fmtSel.value;
+  const [aw, ah] = L.aspect.split(':').map(Number);
+  let W, H;
+  if (aw >= ah) { H = res; W = Math.round(res * aw / ah); } else { W = res; H = Math.round(res * ah / aw); }
+  W -= W % 2; H -= H % 2;
+  exportCv.width = W; exportCv.height = H;
+  composeFrame(ectx, W, H, 0, false);
+
+  const ac = ensureAudio();
+  const stream = exportCv.captureStream(fps);
+  let dest = null;
+  if (state.music) { dest = ac.createMediaStreamDestination(); stream.addTrack(dest.stream.getAudioTracks()[0]); }
+  const chunks = [];
+  try {
+    recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: rate, audioBitsPerSecond: 192000 });
+  } catch (e) { toast('Could not start recorder: ' + e.message); return; }
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const ext = (FORMATS.find(f => f[0] === mime) || [, , 'webm'])[2];
+
+  exporting = true; cancelled = false;
+  $('#btnExport').disabled = true; $('#btnCancel').classList.remove('hidden');
+  $('#eProg').classList.remove('hidden'); $('#eResult').classList.add('hidden');
+  const bar = $('#eProg div');
+  const done = new Promise(r => recorder.onstop = r);
+  recorder.start(500);
+
+  const lead = .15, startAt = ac.currentTime + lead;
+  if (dest) startMusic(0, dest, startAt);
+  await new Promise(resolve => {
+    const step = () => {
+      if (cancelled) return resolve();
+      const t = ac.currentTime - startAt;
+      composeFrame(ectx, W, H, Math.max(0, Math.min(t, state.total)), false);
+      // mirror to on-screen preview
+      vctx.fillStyle = '#000'; vctx.fillRect(0, 0, view.width, view.height);
+      const k = Math.min(view.width / W, view.height / H);
+      vctx.drawImage(exportCv, (view.width - W * k) / 2, (view.height - H * k) / 2, W * k, H * k);
+      bar.style.width = clamp(t / state.total * 100, 0, 100) + '%';
+      $('#eStatus').textContent = `Recording… ${fmt(Math.max(0, t))} / ${fmt(state.total)}`;
+      $('#time').textContent = `${fmt(Math.max(0, t))} / ${fmt(state.total)}`;
+      if (t >= state.total + .25) return resolve();
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  if (recorder.state !== 'inactive') recorder.stop();
+  await done;
+  stopMusic(); stream.getTracks().forEach(t => t.stop());
+  exporting = false; recorder = null;
+  $('#btnExport').disabled = false; $('#btnCancel').classList.add('hidden'); $('#eProg').classList.add('hidden');
+  if (cancelled) { $('#eStatus').textContent = 'Cancelled'; return; }
+  const blob = new Blob(chunks, { type: mime.split(';')[0] });
+  const url = URL.createObjectURL(blob);
+  const v = $('#eVideo'); if (v.src) URL.revokeObjectURL(v.src); v.src = url;
+  const a = $('#eDownload'); a.href = url; a.download = `hologram-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
+  $('#eSize').textContent = (blob.size / 1048576).toFixed(1) + ' MB · ' + W + '×' + H;
+  $('#eResult').classList.remove('hidden');
+  $('#eStatus').textContent = 'Done!';
+  toast('Video ready — tap Download');
+};
+document.addEventListener('visibilitychange', () => { if (exporting && document.hidden) toast('Keep this tab visible while recording!', 5000); });
+
+/* ---------- init ---------- */
+loadPyr(); pyramidToLayout();
+layoutUI(); rebuild(); renderSlides(); renderSlideEditor();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
