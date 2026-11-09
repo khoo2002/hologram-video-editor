@@ -31,7 +31,7 @@
   @media (max-width:900px){.layout{grid-template-columns:1fr;padding:12px 16px}}
   .col{display:flex;flex-direction:column;gap:16px;min-width:0}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .panel h2{flex-wrap:wrap;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:8px}
   .panel h2 .sp{flex:1}
   .stick{position:sticky;top:64px}
   @media (max-width:900px){.stick{position:static}}
@@ -56,6 +56,7 @@
   .btn.danger{color:var(--danger)}
   .btn.icon{padding:6px 9px;min-width:34px}
   .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.preset.on{border-color:var(--accent);color:var(--accent);background:rgba(62,230,255,.08)}
   .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
   @media (max-width:460px){.grid2{grid-template-columns:1fr}}
@@ -154,18 +155,23 @@
         </div>
         <div class="sep"></div>
         <h2>My pyramid <span class="sp"></span><button class="btn" id="btnTemplate">Download template (SVG)</button></h2>
+        <div class="row" id="presets" style="margin-bottom:12px">
+          <button class="btn preset" data-preset="phone">📱 Phone · 1 / 6 / 4 cm</button>
+          <button class="btn preset" data-preset="ipad">iPad A16 · 3 / 15.8 / 9.05 cm</button>
+          <button class="btn preset" data-preset="custom">✎ Custom</button>
+        </div>
         <div class="grid2">
           <label class="f">Screen short side (cm)
-            <input type="number" id="pScreen" value="6.5" min="2" max="60" step="0.1">
+            <input type="number" id="pScreen" value="6.5" min="2" max="60" step="0.01">
           </label>
           <label class="f">Bottom edge – small end (cm)
-            <input type="number" id="pSmall" value="1" min="0" max="40" step="0.1">
+            <input type="number" id="pSmall" value="1" min="0" max="40" step="0.01">
           </label>
           <label class="f">Top edge – wide end (cm)
-            <input type="number" id="pLarge" value="6" min="0.5" max="60" step="0.1">
+            <input type="number" id="pLarge" value="6" min="0.5" max="60" step="0.01">
           </label>
-          <label class="f">Height – slanted side (cm)
-            <input type="number" id="pHeight" value="4" min="0.5" max="60" step="0.1">
+          <label class="f" title="Measured straight across the flat piece, from the short edge to the long edge (not along the slanted edge)">Height of each piece (cm)
+            <input type="number" id="pHeight" value="4" min="0.5" max="60" step="0.01">
           </label>
         </div>
         <div class="row" style="margin-top:10px">
@@ -180,23 +186,23 @@
   <!-- RIGHT: editing -->
   <div class="col">
     <div class="panel">
-      <h2>Images <span class="sp"></span>
+      <h2>1 · Pictures, GIFs &amp; videos <span class="sp"></span>
         <button class="btn" id="btnSortName" title="Sort by file name">A→Z</button>
         <button class="btn" id="btnReverse" title="Reverse order">⇅</button>
         <button class="btn" id="btnShuffle" title="Shuffle">🔀</button>
         <button class="btn danger" id="btnClear" title="Remove all">Clear</button>
       </h2>
       <div class="drop" id="drop">
-        <strong>Tap to add images</strong> or drop them here<br>
-        <span class="hint">Pictures with a black or dark background look best</span>
-        <input type="file" id="fileImgs" accept="image/*" multiple hidden>
+        <strong>Tap to add photos, animated GIFs or video clips</strong> or drop them here<br>
+        <span class="hint">Black backgrounds look best. Plain white or coloured backgrounds can be removed.</span>
+        <input type="file" id="fileImgs" accept="image/*,video/*,.gif" multiple hidden>
       </div>
       <div class="slides" id="slides"></div>
       <p class="hint">Drag cards to reorder (or use ◀ ▶). Tap a card to edit it.</p>
     </div>
 
     <div class="panel">
-      <h2>Auto transitions (apply to all)</h2>
+      <h2>Auto transitions</h2>
       <div class="grid2">
         <label class="f">Each image shows for (s)
           <input type="number" id="aDur" value="3" min="0.3" max="60" step="0.1">
@@ -216,21 +222,27 @@
         <label class="f">Fit
           <select id="aFit"><option value="contain">Whole image (contain)</option><option value="cover">Fill square (cover)</option></select>
         </label>
+        <label class="f">Background
+          <select id="aBg"><option value="">Leave each item as it is</option><option value="35">Remove plain background</option><option value="0">Keep original background</option></select>
+        </label>
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="btn primary" id="btnApplyAll">Apply to all images</button>
-        <button class="btn" id="btnFitMusic" disabled>Fit images to music length</button>
+        <button class="btn primary" id="btnAuto">✨ Auto-make &amp; play</button>
+        <button class="btn" id="btnApplyAll">Apply to all</button>
+        <button class="btn" id="btnFitMusic" disabled>Fit to music length</button>
         <label class="chk"><input type="checkbox" id="optEndFade" checked> Fade out at end</label>
       </div>
+      <p class="hint">✨ Auto-make picks a mix of transitions, stretches everything to fit your music and plays it. GIFs and videos keep their own length.</p>
     </div>
 
     <div class="panel" id="slidePanel">
-      <h2>Selected image <span class="sp"></span><span id="selName" style="text-transform:none;letter-spacing:0"></span></h2>
-      <div id="slideEmpty" class="empty">Select an image card to edit it.</div>
+      <h2>Selected item <span class="sp"></span><span id="selName" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div id="slideEmpty" class="empty">Tap a card to edit it.</div>
       <div id="slideEdit" class="hidden">
+        <p class="hint" id="sInfo" style="margin:0 0 10px"></p>
         <div class="grid2">
           <label class="f">Shows for (s)
-            <input type="number" id="sDur" min="0.3" max="60" step="0.1">
+            <input type="number" id="sDur" min="0.3" max="600" step="0.1">
           </label>
           <label class="f">Transition in
             <select id="sTrans" class="transSel"></select>
@@ -253,6 +265,9 @@
           <label class="f">Brightness <span class="v" id="sBrightV"></span>
             <input type="range" id="sBright" min="0.5" max="2" step="0.05">
           </label>
+          <label class="f" title="Removes the plain colour that touches the picture's edges (white, green, etc.)">Remove plain background <span class="v" id="sBgV"></span>
+            <input type="range" id="sBg" min="0" max="100" step="1" value="0">
+          </label>
         </div>
         <div class="row" style="margin-top:12px">
           <button class="btn" id="btnJump">Preview from here</button>
@@ -263,7 +278,7 @@
     </div>
 
     <div class="panel">
-      <h2>Music <span class="sp"></span><button class="btn danger hidden" id="btnMusicDel">Remove</button></h2>
+      <h2>2 · Music (optional) <span class="sp"></span><button class="btn danger hidden" id="btnMusicDel">Remove</button></h2>
       <div class="drop" id="dropMusic">
         <strong id="musicLabel">Tap to add music</strong><br>
         <span class="hint">MP3, M4A, WAV, OGG…</span>
@@ -300,7 +315,7 @@
     </div>
 
     <div class="panel" id="exportPanel">
-      <h2>Export</h2>
+      <h2>3 · Export</h2>
       <div class="grid2">
         <label class="f">Resolution
           <select id="eRes"><option value="720">720p</option><option value="1080" selected>1080p</option></select>
@@ -404,6 +419,223 @@ async function loadImage(file) {
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return { src: c, url };
 }
+
+/* ---------- animated GIF decoder (no libraries) ---------- */
+function lzwDecode(minCode, data, npix) {
+  const out = new Uint8Array(npix), clear = 1 << minCode, eoi = clear + 1;
+  const prefix = new Int32Array(4096), suffix = new Uint8Array(4096), stack = new Uint8Array(4097);
+  for (let i = 0; i < clear; i++) { prefix[i] = -1; suffix[i] = i; }
+  let avail = eoi + 1, size = minCode + 1, mask = (1 << size) - 1, old = -1, first = 0;
+  let datum = 0, bits = 0, op = 0, pi = 0;
+  while (op < npix) {
+    while (bits < size) { if (pi >= data.length) return out; datum |= data[pi++] << bits; bits += 8; }
+    let code = datum & mask; datum >>>= size; bits -= size;
+    if (code === clear) { size = minCode + 1; mask = (1 << size) - 1; avail = eoi + 1; old = -1; continue; }
+    if (code === eoi) break;
+    if (old === -1) { out[op++] = suffix[code]; old = first = code; continue; }
+    const inCode = code; let sp = 0;
+    if (code >= avail) { stack[sp++] = first; code = old; }
+    while (code >= clear) { stack[sp++] = suffix[code]; code = prefix[code]; }
+    first = suffix[code]; stack[sp++] = first;
+    if (avail < 4096) {
+      prefix[avail] = old; suffix[avail] = first; avail++;
+      if ((avail & mask) === 0 && avail < 4096) { size++; mask += avail; }
+    }
+    old = inCode;
+    while (sp > 0 && op < npix) out[op++] = stack[--sp];
+  }
+  return out;
+}
+function interlaceRows(h) {
+  const rows = [];
+  for (const [s, step] of [[0, 8], [4, 8], [2, 4], [1, 2]]) for (let y = s; y < h; y += step) rows.push(y);
+  return rows;
+}
+// calls onFrame(rgba, W, H, delayMs) with the fully composed picture for each frame
+function decodeGif(d, onFrame) {
+  if (d[0] !== 0x47 || d[1] !== 0x49 || d[2] !== 0x46) throw new Error('not a GIF');
+  const W = d[6] | d[7] << 8, H = d[8] | d[9] << 8, pf = d[10];
+  let p = 13, gct = null;
+  if (pf & 0x80) { const n = 2 << (pf & 7); gct = d.subarray(p, p + n * 3); p += n * 3; }
+  const rgba = new Uint8ClampedArray(W * H * 4);
+  let gce = { disposal: 0, delay: 0, trans: -1 }, count = 0;
+  const skipBlocks = () => { while (p < d.length && d[p]) p += d[p] + 1; p++; };
+  while (p < d.length) {
+    const b = d[p++];
+    if (b === 0x3B) break;
+    if (b === 0x21) {
+      const label = d[p++];
+      if (label === 0xF9 && d[p] >= 4) {
+        const pk = d[p + 1];
+        gce = { disposal: (pk >> 2) & 7, delay: (d[p + 2] | d[p + 3] << 8) * 10, trans: pk & 1 ? d[p + 4] : -1 };
+      }
+      skipBlocks(); continue;
+    }
+    if (b !== 0x2C) break;
+    const fx = d[p] | d[p + 1] << 8, fy = d[p + 2] | d[p + 3] << 8, fw = d[p + 4] | d[p + 5] << 8, fh = d[p + 6] | d[p + 7] << 8, pk = d[p + 8];
+    p += 9;
+    let pal = gct;
+    if (pk & 0x80) { const n = 2 << (pk & 7); pal = d.subarray(p, p + n * 3); p += n * 3; }
+    const minCode = d[p++];
+    let len = 0;
+    for (let q = p; q < d.length && d[q]; q += d[q] + 1) len += d[q];
+    const data = new Uint8Array(len);
+    for (let o = 0; p < d.length && d[p];) { const n = d[p++]; data.set(d.subarray(p, p + n), o); o += n; p += n; }
+    p++;
+    const px = lzwDecode(minCode, data, fw * fh);
+    const saved = gce.disposal === 3 ? rgba.slice() : null;
+    const rows = pk & 0x40 ? interlaceRows(fh) : null;
+    if (pal) for (let r = 0; r < fh; r++) {
+      const y = fy + (rows ? rows[r] : r); if (y >= H) continue;
+      for (let x = 0; x < fw; x++) {
+        const ci = px[r * fw + x], X = fx + x;
+        if (ci === gce.trans || X >= W) continue;
+        const k = (y * W + X) * 4, c = ci * 3;
+        rgba[k] = pal[c]; rgba[k + 1] = pal[c + 1]; rgba[k + 2] = pal[c + 2]; rgba[k + 3] = 255;
+      }
+    }
+    onFrame(rgba, W, H, gce.delay < 20 ? 100 : gce.delay);
+    if (++count >= 400) break;
+    if (gce.disposal === 2) {
+      for (let y = fy; y < Math.min(H, fy + fh); y++) rgba.fill(0, (y * W + fx) * 4, (y * W + Math.min(W, fx + fw)) * 4);
+    } else if (saved) rgba.set(saved);
+    gce = { disposal: 0, delay: 0, trans: -1 };
+  }
+  return count;
+}
+async function loadGif(file) {
+  const d = new Uint8Array(await file.arrayBuffer());
+  const frames = []; let t = 0, tmp, tctx;
+  decodeGif(d, (rgba, W, H, delay) => {
+    if (!tmp) { tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; tctx = tmp.getContext('2d'); }
+    tctx.putImageData(new ImageData(rgba, W, H), 0, 0);
+    const k = Math.min(1, 600 / Math.max(W, H));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(W * k)); c.height = Math.max(1, Math.round(H * k));
+    c.getContext('2d').drawImage(tmp, 0, 0, c.width, c.height);
+    frames.push({ c, t0: t }); t += delay / 1000;
+  });
+  if (!frames.length) throw new Error('empty GIF');
+  return { frames, dur: t };
+}
+
+/* ---------- video clips ---------- */
+const vidHolder = document.createElement('div');
+vidHolder.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;overflow:hidden';
+document.body.appendChild(vidHolder);
+function makeVideo(url) {
+  const v = document.createElement('video');
+  v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+  v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+  v.src = url; vidHolder.appendChild(v);
+  return v;
+}
+async function loadVideo(file) {
+  const url = URL.createObjectURL(file), v = makeVideo(url);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  await new Promise((res, rej) => { v.onloadedmetadata = res; v.onerror = () => rej(new Error('video')); });
+  if (!v.videoWidth) { v.remove(); URL.revokeObjectURL(url); throw new Error('no picture in this video'); }
+  // some WebM files report an unknown length until you seek to the end
+  if (!isFinite(v.duration)) { v.currentTime = 1e9; await Promise.race([new Promise(r => v.ondurationchange = r), wait(2000)]); }
+  const dur = isFinite(v.duration) && v.duration > 0 ? v.duration : 10;
+  v.currentTime = Math.min(.5, dur / 2);
+  await Promise.race([new Promise(r => v.onseeked = r), wait(2500)]);
+  v.onseeked = v.ondurationchange = null;
+  let thumb = '';
+  try {
+    const k = Math.min(1, 320 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k));
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    thumb = c.toDataURL('image/jpeg', .7);
+  } catch {}
+  return { video: v, url, dur, thumb };
+}
+// keep each clip's <video> playing in step with the timeline
+function syncVideos(t, run) {
+  const tl = state.timeline;
+  for (let i = 0; i < tl.length; i++) {
+    const { s, start, end } = tl[i];
+    if (s.kind !== 'video') continue;
+    const v = s.video, next = tl[i + 1];
+    const tail = next && next.s.transition !== 'none' ? Math.min(next.s.transDur, next.s.duration * .95) : 0;
+    if (t < start - .05 || t >= end + tail) { if (!v.paused) v.pause(); continue; }
+    const want = Math.max(0, t - start) % s.vidDur;
+    if (run) {
+      if (v.paused) v.play().catch(() => {});
+      if (Math.abs(v.currentTime - want) > .3) v.currentTime = want;
+    } else {
+      if (!v.paused) v.pause();
+      if (Math.abs(v.currentTime - want) > .04 && !v.seeking) v.currentTime = want;
+    }
+  }
+}
+
+/* ---------- plain background remover ---------- */
+// flood-fills from the picture's edges, clearing pixels close to the corner colour
+function removeBg(src, tol) {
+  const w = src.width, h = src.height, c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(src, 0, 0);
+  if (!tol) return c;
+  const im = x.getImageData(0, 0, w, h), d = im.data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (const i of [0, w - 1, (h - 1) * w, h * w - 1]) if (d[i * 4 + 3] > 128) { r += d[i * 4]; g += d[i * 4 + 1]; b += d[i * 4 + 2]; n++; }
+  if (!n) return c;
+  r /= n; g /= n; b /= n;
+  const T = (tol * 1.6) ** 2, gone = new Uint8Array(w * h), stack = new Int32Array(w * h);
+  let sp = 0;
+  const near = i => { const k = i * 4; if (d[k + 3] < 16) return true; const dr = d[k] - r, dg = d[k + 1] - g, db = d[k + 2] - b; return dr * dr + dg * dg + db * db <= T; };
+  const push = i => { if (!gone[i] && near(i)) { gone[i] = 1; stack[sp++] = i; } };
+  for (let X = 0; X < w; X++) { push(X); push((h - 1) * w + X); }
+  for (let Y = 0; Y < h; Y++) { push(Y * w); push(Y * w + w - 1); }
+  while (sp) {
+    const i = stack[--sp], px = i % w;
+    d[i * 4 + 3] = 0;
+    if (px > 0) push(i - 1);
+    if (px < w - 1) push(i + 1);
+    if (i >= w) push(i - w);
+    if (i < w * (h - 1)) push(i + w);
+  }
+  // soften the cut edge so no bright halo is left
+  for (let i = 0; i < w * h; i++) {
+    if (gone[i]) continue;
+    const px = i % w;
+    if ((px > 0 && gone[i - 1]) || (px < w - 1 && gone[i + 1]) || (i >= w && gone[i - w]) || (i < w * (h - 1) && gone[i + w])) d[i * 4 + 3] *= .55;
+  }
+  x.putImageData(im, 0, 0);
+  return c;
+}
+function applyBg(s) {
+  if (s.kind === 'image') s.src = s.bg ? removeBg(s.base, s.bg) : s.base;
+  else if (s.kind === 'gif') { s.frames = s.bg ? s.baseFrames.map(f => ({ c: removeBg(f.c, s.bg), t0: f.t0 })) : s.baseFrames; s.src = s.frames[0].c; }
+}
+
+/* ---------- media helpers ---------- */
+function sourceAt(s, u) {
+  if (s.kind === 'video') return s.video;
+  if (s.kind === 'gif') {
+    const fr = s.frames, t = ((u % s.gifDur) + s.gifDur) % s.gifDur;
+    let lo = 0, hi = fr.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (fr[mid].t0 <= t) lo = mid; else hi = mid - 1; }
+    return fr[lo].c;
+  }
+  return s.src;
+}
+// GIFs play whole loops, videos play their full clip, pictures use the chosen time
+function naturalDuration(s, d) {
+  if (s.kind === 'gif') return Math.max(s.gifDur, Math.round(d / s.gifDur) * s.gifDur);
+  if (s.kind === 'video') return Math.max(.5, Math.min(s.vidDur, 120));
+  return d;
+}
+function disposeSlide(s) {
+  const inUse = u => state.slides.some(o => o !== s && (o.url === u || o.videoUrl === u));
+  if (s.kind === 'video') {
+    s.video.pause(); s.video.removeAttribute('src'); s.video.load(); s.video.remove();
+    if (!inUse(s.videoUrl)) URL.revokeObjectURL(s.videoUrl);
+  } else if (s.url.startsWith('blob:') && !inUse(s.url)) URL.revokeObjectURL(s.url);
+}
+
 function defaults() {
   const tr = $('#aTrans').value;
   return {
@@ -411,7 +643,7 @@ function defaults() {
     transition: tr === 'random' ? randomTrans() : tr,
     transDur: +$('#aTransDur').value || 0,
     easing: $('#aEase').value, motion: $('#aMotion').value, fit: $('#aFit').value,
-    scale: 1, bright: 1
+    scale: 1, bright: 1, bg: $('#aBg').value === '' ? null : +$('#aBg').value
   };
 }
 function randomTrans() {
@@ -419,19 +651,40 @@ function randomTrans() {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 async function addFiles(files) {
-  const imgs = [...files].filter(f => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|avif|heic)$/i.test(f.name));
-  if (!imgs.length) return;
+  const isVideo = f => f.type.startsWith('video/') || /\.(mp4|m4v|mov|webm|ogv)$/i.test(f.name);
+  const isGif = f => f.type === 'image/gif' || /\.gif$/i.test(f.name);
+  const list = [...files].filter(f => isVideo(f) || f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|avif|heic)$/i.test(f.name));
+  if (!list.length) return;
   let added = 0, failed = 0;
-  for (const f of imgs) {
+  for (const f of list) {
     try {
-      const { src, url } = await loadImage(f);
-      state.slides.push({ id: uid++, name: f.name, src, url, ...defaults() });
+      let slide;
+      if (isVideo(f)) {
+        toast('Loading video…');
+        const v = await loadVideo(f);
+        slide = { kind: 'video', video: v.video, videoUrl: v.url, vidDur: v.dur, src: v.video, url: v.thumb };
+      } else if (isGif(f)) {
+        toast('Reading GIF…');
+        const g = await loadGif(f);
+        slide = g.frames.length > 1
+          ? { kind: 'gif', baseFrames: g.frames, frames: g.frames, gifDur: g.dur, src: g.frames[0].c, url: URL.createObjectURL(f) }
+          : { kind: 'image', base: g.frames[0].c, src: g.frames[0].c, url: URL.createObjectURL(f) };
+      } else {
+        const { src, url } = await loadImage(f);
+        slide = { kind: 'image', base: src, src, url };
+      }
+      const d = defaults();
+      Object.assign(slide, { id: uid++, name: f.name }, d);
+      slide.duration = naturalDuration(slide, d.duration);
+      slide.bg = slide.kind === 'video' ? 0 : d.bg || 0;
+      if (slide.bg) applyBg(slide);
+      state.slides.push(slide);
       added++;
-    } catch { failed++; }
+    } catch (e) { failed++; console.warn(f.name, e); }
   }
   if (state.sel == null && state.slides.length) state.sel = state.slides[0].id;
   rebuild(); renderSlides(); renderSlideEditor();
-  toast(`${added} image${added === 1 ? '' : 's'} added` + (failed ? ` · ${failed} couldn't be opened (HEIC? try JPG/PNG)` : ''));
+  toast(`${added} item${added === 1 ? '' : 's'} added` + (failed ? ` · ${failed} couldn't be opened (HEIC/HEVC? try JPG, PNG, GIF or MP4)` : ''));
 }
 
 const drop = $('#drop'), fileImgs = $('#fileImgs');
@@ -462,7 +715,7 @@ function renderSlides() {
     c.className = 'card' + (s.id === state.sel ? ' sel' : '');
     c.draggable = true; c.dataset.id = s.id;
     c.innerHTML = `<div class="th" style="background-image:url('${s.url}')"></div>
-      <span class="num">${i + 1}</span>
+      <span class="num">${i + 1}${s.kind !== 'image' ? ' · ' + s.kind.toUpperCase() : ''}</span>
       <div class="meta"><span>${s.duration.toFixed(1)}s</span><span>${(TRANSITIONS.find(t => t[0] === s.transition) || ['', ''])[1]}</span></div>
       <div class="ops"><button data-op="left" title="Move earlier">◀</button><button data-op="del" title="Remove">✕</button><button data-op="right" title="Move later">▶</button></div>`;
     c.onclick = e => {
@@ -497,8 +750,8 @@ function move(from, to) {
 function removeSlide(id) {
   const i = state.slides.findIndex(s => s.id === id);
   if (i < 0) return;
-  URL.revokeObjectURL(state.slides[i].url);
-  state.slides.splice(i, 1);
+  const [gone] = state.slides.splice(i, 1);
+  disposeSlide(gone);
   if (state.sel === id) state.sel = state.slides[Math.min(i, state.slides.length - 1)]?.id ?? null;
   rebuild(); renderSlides(); renderSlideEditor();
 }
@@ -511,29 +764,44 @@ $('#btnShuffle').onclick = () => {
   rebuild(); renderSlides();
 };
 $('#btnClear').onclick = () => {
-  if (!state.slides.length || !confirm('Remove all images?')) return;
-  state.slides.forEach(s => URL.revokeObjectURL(s.url));
-  state.slides = []; state.sel = null; rebuild(); renderSlides(); renderSlideEditor(); seek(0);
+  if (!state.slides.length || !confirm('Remove everything?')) return;
+  const old = state.slides;
+  state.slides = []; old.forEach(disposeSlide); state.sel = null; rebuild(); renderSlides(); renderSlideEditor(); seek(0);
 };
 
 /* ---------- auto transitions ---------- */
-$('#btnApplyAll').onclick = () => {
-  if (!state.slides.length) return toast('Add some images first');
+function applyAll() {
   state.slides.forEach(s => {
     const d = defaults();
-    Object.assign(s, { duration: d.duration, transition: d.transition, transDur: d.transDur, easing: d.easing, motion: d.motion, fit: d.fit });
+    Object.assign(s, { duration: naturalDuration(s, d.duration), transition: d.transition, transDur: d.transDur, easing: d.easing, motion: d.motion, fit: d.fit });
+    if (s.kind !== 'video' && d.bg != null && s.bg !== d.bg) { s.bg = d.bg; applyBg(s); }
   });
   rebuild(); renderSlides(); renderSlideEditor();
-  toast('Applied to all images');
+}
+// stretch or squeeze every item by the same factor so the video ends with the music
+function fitToMusic() {
+  const m = state.music; if (!m || !state.total) return 1;
+  const k = (m.end - m.start + m.delay) / state.total;
+  state.slides.forEach(s => { s.duration = Math.max(.3, s.duration * k); s.transDur = Math.min(s.transDur, s.duration * .8); });
+  rebuild(); renderSlides(); renderSlideEditor();
+  return k;
+}
+$('#btnApplyAll').onclick = () => {
+  if (!state.slides.length) return toast('Add some pictures first');
+  applyAll(); toast('Applied to everything');
 };
 $('#btnFitMusic').onclick = () => {
-  const m = state.music; if (!m || !state.slides.length) return;
-  const target = m.end - m.start + m.delay;
-  const per = target / state.slides.length;
-  state.slides.forEach(s => { s.duration = Math.max(.3, per); s.transDur = Math.min(s.transDur, s.duration * .8); });
-  $('#aDur').value = per.toFixed(2);
-  rebuild(); renderSlides(); renderSlideEditor();
-  toast(`Each image now shows ${per.toFixed(2)} s`);
+  if (!state.slides.length) return;
+  const k = fitToMusic();
+  toast(`Timing ×${k.toFixed(2)}: the video now lasts ${fmt(state.total)}, same as the music`);
+};
+$('#btnAuto').onclick = () => {
+  if (!state.slides.length) return toast('Add pictures, GIFs or videos first');
+  $('#aTrans').value = 'random'; $('#aTransDur').value = .8; $('#aEase').value = 'easeInOut';
+  applyAll();
+  if (state.music) fitToMusic();
+  pause(); seek(0); play();
+  toast(state.music ? '✨ Made and timed to your music' : '✨ Made! Add music to time it to a song');
 };
 $('#optEndFade').onchange = e => state.endFade = e.target.checked;
 
@@ -549,7 +817,17 @@ function renderSlideEditor() {
   $('#sEase').value = s.easing; $('#sMotion').value = s.motion; $('#sFit').value = s.fit;
   $('#sScale').value = s.scale; $('#sScaleV').textContent = Math.round(s.scale * 100) + '%';
   $('#sBright').value = s.bright; $('#sBrightV').textContent = Math.round(s.bright * 100) + '%';
+  $('#sBg').value = s.bg || 0; $('#sBg').disabled = s.kind === 'video';
+  $('#sBgV').textContent = s.kind === 'video' ? 'pictures & GIFs only' : bgLabel(s.bg);
+  $('#sInfo').textContent = s.kind === 'gif' ? `Animated GIF · ${s.frames.length} frames · ${s.gifDur.toFixed(2)} s per loop`
+    : s.kind === 'video' ? `Video clip · ${s.vidDur.toFixed(1)} s · plays without its own sound (add music in step 2)` : 'Picture';
 }
+const bgLabel = v => v ? v + '%' : 'off';
+$('#sBg').addEventListener('input', e => $('#sBgV').textContent = bgLabel(+e.target.value));
+$('#sBg').addEventListener('change', e => {
+  const s = sel(); if (!s || s.kind === 'video') return;
+  s.bg = +e.target.value; applyBg(s);
+});
 function bindSlide(id, key, num, after) {
   $(id).addEventListener('input', e => {
     const s = sel(); if (!s) return;
@@ -574,8 +852,8 @@ $('#btnDup').onclick = () => {
   const s = sel(); if (!s) return;
   const i = state.slides.indexOf(s);
   const copy = { ...s, id: uid++ };
-  // share the bitmap but give the copy its own thumbnail URL lifetime
-  copy.url = s.url; copy._shared = true;
+  // pictures and GIF frames are shared; a clip needs its own player to play independently
+  if (s.kind === 'video') { copy.video = makeVideo(s.videoUrl); copy.src = copy.video; }
   state.slides.splice(i + 1, 0, copy); state.sel = copy.id;
   rebuild(); renderSlides(); renderSlideEditor();
 };
@@ -608,13 +886,42 @@ function geom() {
 const PYR = ['pScreen', 'pSmall', 'pLarge', 'pHeight'];
 const num = id => parseFloat($('#' + id).value);
 function pyr() { return { S: num('pScreen'), small: num('pSmall'), large: num('pLarge'), h: num('pHeight') }; }
-function savePyr() { try { localStorage.setItem('holoPyramid', JSON.stringify(pyr())); } catch {} }
-function loadPyr() {
+const PRESETS = {
+  phone: { S: 6.5, small: 1, large: 6, h: 4, aspect: '16:9', edge: .2 },
+  ipad: { S: 15.8, small: 3, large: 15.8, h: 9.05, aspect: '1:1', edge: .08 }
+};
+let preset = 'custom';
+function setFields(p) {
+  for (const [id, k] of [['pScreen', 'S'], ['pSmall', 'small'], ['pLarge', 'large'], ['pHeight', 'h']]) if (isFinite(p[k])) $('#' + id).value = p[k];
+}
+function markPreset() { document.querySelectorAll('.preset').forEach(b => b.classList.toggle('on', b.dataset.preset === preset)); }
+function toCustom() { if (preset !== 'custom') { preset = 'custom'; markPreset(); } }
+function savePyr() {
   try {
-    const p = JSON.parse(localStorage.getItem('holoPyramid'));
-    if (p) for (const [id, k] of [['pScreen', 'S'], ['pSmall', 'small'], ['pLarge', 'large'], ['pHeight', 'h']]) if (isFinite(p[k])) $('#' + id).value = p[k];
+    localStorage.setItem('holoPyramid', JSON.stringify({ ...pyr(), preset }));
+    if (preset === 'custom') localStorage.setItem('holoPyramidCustom', JSON.stringify(pyr()));
   } catch {}
 }
+function applyPreset(name) {
+  if (name === 'custom') {
+    try { const c = JSON.parse(localStorage.getItem('holoPyramidCustom')); if (c) setFields(c); } catch {}
+  } else {
+    const p = PRESETS[name];
+    setFields(p);
+    L.aspect = p.aspect; $('#lAspect').value = p.aspect;
+    L.edge = p.edge; $('#lEdge').value = p.edge;
+  }
+  preset = name; markPreset();
+  pyramidToLayout(); savePyr(); layoutUI();
+}
+function loadPyr() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem('holoPyramid')); } catch {}
+  if (p && PRESETS[p.preset]) return applyPreset(p.preset);
+  if (p) setFields(p);
+  markPreset();
+}
+document.querySelectorAll('.preset').forEach(b => b.onclick = () => applyPreset(b.dataset.preset));
 // pyramid sizes -> center gap + image size
 function pyramidToLayout() {
   const { S, small, large } = pyr();
@@ -632,7 +939,7 @@ function layoutToPyramid() {
   $('#pSmall').value = nSmall.toFixed(1);
   $('#pLarge').value = nLarge.toFixed(1);
   $('#pHeight').value = ((nLarge - nSmall) / 2 * ratio).toFixed(1);
-  savePyr();
+  toCustom(); savePyr();
 }
 function pyramidDims() {
   const { S, small, large, h } = pyr(), out = $('#pDims');
@@ -649,11 +956,12 @@ function pyramidDims() {
   out.innerHTML = lines.join('<br>');
   return { small, large, h };
 }
-PYR.forEach(id => $('#' + id).addEventListener('input', () => { pyramidToLayout(); savePyr(); layoutUI(); }));
+PYR.forEach(id => $('#' + id).addEventListener('input', () => { toCustom(); pyramidToLayout(); savePyr(); layoutUI(); }));
 $('#btn45').onclick = () => {
-  const { small, large } = pyr();
+  const { small, large, h } = pyr();
   if (!(large > small)) return toast('Set the top and bottom edges first');
-  $('#pHeight').value = ((large - small) / 2 * Math.SQRT2).toFixed(1);
+  const h45 = +((large - small) / 2 * Math.SQRT2).toFixed(2);
+  if (h45 !== h) { $('#pHeight').value = h45; toCustom(); }
   savePyr(); layoutUI();
 };
 $('#btnTemplate').onclick = () => {
@@ -697,7 +1005,8 @@ function drawSlide(c, size, s, u, tf = {}) {
     case 'float': mY = Math.sin(u * 2.2) * .035; break;
     case 'pulse': mS = 1 + Math.sin(u * 3.2) * .05; break;
   }
-  const img = s.src, iw = img.width, ih = img.height;
+  const img = sourceAt(s, u), iw = img.videoWidth || img.width, ih = img.videoHeight || img.height;
+  if (!iw || !ih) return;
   const base = (s.fit === 'cover' ? Math.max(size / iw, size / ih) : Math.min(size / iw, size / ih)) * s.scale;
   c.save();
   c.globalAlpha = alpha;
@@ -1018,6 +1327,7 @@ function frame() {
     }
   }
   if (!exporting) {
+    syncVideos(curT, playing);
     const fs = isFull();
     composeFrame(vctx, view.width, view.height, state.total ? curT : performance.now() / 1000, state.guide && !fs);
     scrub.value = curT;
@@ -1094,6 +1404,8 @@ $('#btnExport').onclick = async () => {
   const ext = (FORMATS.find(f => f[0] === mime) || [, , 'webm'])[2];
 
   exporting = true; cancelled = false;
+  syncVideos(0, false); // park every clip at its start before recording
+  await new Promise(r => setTimeout(r, 400));
   $('#btnExport').disabled = true; $('#btnCancel').classList.remove('hidden');
   $('#eProg').classList.remove('hidden'); $('#eResult').classList.add('hidden');
   const bar = $('#eProg div');
@@ -1106,6 +1418,7 @@ $('#btnExport').onclick = async () => {
     const step = () => {
       if (cancelled) return resolve();
       const t = ac.currentTime - startAt;
+      syncVideos(Math.max(0, t), true);
       composeFrame(ectx, W, H, Math.max(0, Math.min(t, state.total)), false);
       // mirror to on-screen preview
       vctx.fillStyle = '#000'; vctx.fillRect(0, 0, view.width, view.height);
